@@ -229,7 +229,7 @@ function onPuzzleComplete(){
   finishGame();
 }
 
-// Build the share preview grid and emoji text
+// Build the share preview grid shown in the modal
 function renderSharePreview(){
   if (!shareGrid || !puzzle) return;
   const { rows, cols } = puzzle.grid;
@@ -253,6 +253,7 @@ function renderSharePreview(){
   }
 }
 
+// Assemble plain-text emoji grid for clipboard sharing
 function buildShareText(){
   const { rows, cols } = puzzle.grid;
   const lines = [];
