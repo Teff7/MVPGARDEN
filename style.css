@@ -1,0 +1,134 @@
+/* Base */
+:root{
+  --bg:#000; --fg:#fff; --tooltip-bg:#fff; --tooltip-fg:#000; --cell:44px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--bg); color:var(--fg);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;}
+
+/* Ensure the HTML [hidden] attribute actually hides sections */
+[hidden] { display: none !important; }
+
+
+/* Screens */
+.welcome-screen,.game-screen{
+  min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; text-align:center;
+}
+.brand{font-weight:800; letter-spacing:.02em}
+
+/* Roadmap (unchanged) */
+.roadmap{display:flex; gap:1rem; margin:1rem 0;}
+.road-item{width:56px; height:56px; border:2px solid var(--fg); border-radius:14px; display:grid; place-items:center; position:relative;}
+.icon{width:28px; height:28px; fill:var(--fg)}
+.road-item::after{content:attr(data-tip); position:absolute; left:50%; transform:translate(-50%,calc(-100% - 10px));
+  background:var(--tooltip-bg); color:var(--tooltip-fg); padding:.4rem .6rem; border-radius:8px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .15s; font-size:.9rem;}
+.road-item:hover::after{opacity:1}
+
+/* Buttons */
+.play-button,.help-button{
+  border:2px solid var(--fg); background:transparent; color:var(--fg);
+  padding:.55rem 1rem; border-radius:12px; font-weight:600; cursor:pointer;
+}
+.help-button.small{padding:.35rem .6rem; font-size:.9rem}
+
+/* TOP: center date + menu as a group */
+.top-bar{ width:min(560px, 92vw); display:flex; justify-content:center; }
+.top-center{ display:flex; align-items:center; gap:.6rem; }
+
+/* Dropdowns */
+.dropdown{position:relative}
+.dropdown .menu{
+  position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%);
+  background:#111; border:1px solid #444; border-radius:12px; padding:.3rem; display:none; min-width:200px; z-index:10; text-align:center;
+}
+.dropdown.open .menu{display:block}
+.menu-item{
+  width:100%; background:transparent; color:var(--fg);
+  border:1px solid #444; text-align:center; padding:.5rem .6rem; border-radius:8px; cursor:pointer; margin:.25rem 0;
+}
+.menu-item:hover{background:#1e1e1e}
+
+/* Grid */
+.grid{
+  display:grid; grid-template-columns:repeat(5, var(--cell)); grid-template-rows:repeat(5, var(--cell));
+  gap:4px; margin-top:.5rem;
+}
+.cell{ width:var(--cell); height:var(--cell); display:grid; place-items:center; background:#fff; color:#000; border:2px solid #fff; position:relative; font-size:1.2rem; font-weight:700; user-select:none; }
+.cell.block{ background:#000; border-color:#000; color:#000; }
+.cell .num{ position:absolute; top:2px; left:4px; font-size:.65rem; color:#000; font-weight:700; }
+.cell.active{ animation: flash 1s infinite alternate; outline:2px solid #fff; }
+@keyframes flash { 0%{background:#fff;color:#000} 100%{background:#000;color:#fff} }
+
+/* Clue panel */
+.clue-panel{ width:min(560px, 92vw); }
+.clue-header{ opacity:.9; margin-top:1rem; }
+.clue{ font-size:1.1rem; margin:.5rem auto 0; position:relative; }
+/* Enumeration styling: show the answer length in parentheses with subtle emphasis */
+.clue .enumeration {
+  opacity: 0.8;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+.clue .indicator,.clue .fodder,.clue .def{ position:relative }
+.clue.annot-on .indicator{ color:#9ad; }
+.clue.annot-on .fodder{ color:#f47; }
+.clue.help-on .def{ color:hotpink; }
+
+/* Tooltips — only visible in analyse mode */
+/* Tooltips appear when hovering annotated clue segments. Use the
+   data-tooltip attribute to draw the content.  The bubble is
+   positioned below the hovered text and styled for better
+   readability. */
+.clue.annot-on .indicator:hover::after,
+.clue.annot-on .fodder:hover::after,
+.clue.annot-on .def:hover::after{
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 6px);
+  top: 100%;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
+  padding: .35rem .5rem;
+  border-radius: 6px;
+  font-size: .95rem;
+  line-height: 1.2;
+  /* Ensure the tooltip has a reasonable width. Setting a minimum
+     width prevents the bubble from collapsing into a narrow sliver,
+     while a maximum width limits line length for readability. */
+  display: block;
+  min-width: 140px;
+  max-width: 320px;
+  white-space: normal;
+  word-wrap: break-word;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  z-index: 10;
+}
+
+/* Device colouring (first indicator) */
+.clue.acrostic  { --indicator-col:#6fa8dc; }
+.clue.hidden    { --indicator-col:#4caf50; }
+.clue.container { --indicator-col:#b97aeb; }
+.clue.reversal  { --indicator-col:#20b2aa; }
+.clue.deletion  { --indicator-col:#ffca28; }
+.clue.homophone { --indicator-col:#e91e63; }
+.clue.anagram   { --indicator-col:#6fa8dc; }
+.clue.charade   { --indicator-col:#8d6e63; }
+.clue.double    { --indicator-col:#9e9e9e; }
+.clue.lit       { --indicator-col:#c0c0c0; }
+
+/* Bottom actions — centered under the clue */
+.bottom-actions{
+  width:min(560px, 92vw);
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:.5rem;
+  margin:1rem auto 1.25rem;
+}
+
+/* Modal & fireworks (unchanged) */
+.modal{ position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,.6); }
+.modal[hidden]{ display:none }
+.modal-card{ width:min(680px, 92vw); max-height:86vh; overflow:auto; background:#111; border:1px solid #444; border-radius:16px; padding:1rem 1.25rem; }
+.modal-close{ position:sticky; top:0; float:right; margin-left:auto; border:0; background:transparent; color:#fff; font-size:2rem; cursor:pointer }
+.fireworks{ position:fixed; inset:0; pointer-events:none }
+.pixel{ position:absolute; width:2px; height:2px; background:#fff }

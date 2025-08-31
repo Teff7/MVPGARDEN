@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daily 5×5 Cryptic</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Hidden input to capture mobile keystrokes -->
+  <input id="mobileInput" inputmode="text" maxlength="1" autocomplete="off" autocapitalize="characters"
+         style="opacity:0; position:absolute; left:-10000px;" />
+
+  <!-- Game (loads immediately; no welcome screen) -->
+  <section id="game" class="game-screen">
+    <!-- TOP: centered date (menu removed) -->
+    <div class="top-bar">
+      <div class="top-center">
+        <div id="puzzleDate" class="date"></div>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div id="grid" class="grid" role="application" aria-label="5 by 5 crossword grid"></div>
+
+    <!-- Clue panel (stays between grid and bottom buttons) -->
+    <div id="cluePanel" class="clue-panel">
+      <div id="clueHeader" class="clue-header">—</div>
+      <div id="clueText" class="clue"></div>
+    </div>
+
+    <!-- BOTTOM: centered gameplay buttons -->
+    <div class="bottom-actions">
+      <div class="dropdown" id="hintDropdown">
+        <button class="help-button small" id="btnHints" aria-haspopup="true" aria-expanded="false">Hints ▾</button>
+        <div class="menu" id="hintMenu" role="menu" aria-hidden="true">
+          <button class="menu-item" id="hintDef" role="menuitem">Definition</button>
+          <button class="menu-item" id="hintLetter" role="menuitem">Reveal a letter</button>
+          <button class="menu-item" id="hintWordplay" role="menuitem">Reveal the trick</button>
+        </div>
+      </div>
+
+      <button class="help-button small" id="btnGiveUp" title="Reveal this entry">Reveal answer</button>
+      <button class="help-button small" id="btnHelpBottom">Help</button>
+    </div>
+  </section>
+
+  <!-- Help modal -->
+  <div id="helpModal" class="modal" hidden>
+    <div class="modal-card">
+      <button class="modal-close" id="helpClose" aria-label="Close">×</button>
+      <h2>How cryptic crosswords work (and how this game teaches them)</h2>
+      <p>Each clue has two halves:</p>
+      <ul>
+        <li><strong>Definition</strong> — plain meaning of the answer.</li>
+        <li><strong>Wordplay</strong> — instructions to build the answer (e.g., anagram, container, hidden).</li>
+      </ul>
+      <p>Use the <em>Hints</em> menu if you’re learning:</p>
+      <ul>
+        <li><strong>Definition</strong> highlights the definition part.</li>
+        <li><strong>Reveal a letter</strong> fills a random empty cell in the entry.</li>
+        <li><strong>Reveal the trick</strong> colours and tool-tips the indicator and fodder.</li>
+      </ul>
+      <p>Click a numbered square to switch between Across and Down on that start square. Type moves the cursor; Backspace moves back. When an entry is correct, it locks in. “Reveal answer” will fill it.</p>
+    </div>
+  </div>
+
+  <div id="fireworks" class="fireworks" aria-hidden="true"></div>
+
+  <!-- Inline puzzle data & tooltips embedded -->
+  <script id="puzzleData" type="application/json">
+    {
+      "id": "2025-08-19",
+      "grid": {
+        "rows": 5,
+        "cols": 5,
+        "blocks": [[1, 1], [1, 3], [3, 1], [3, 3]],
+        "numbers": {
+          "all": [[0, 0, "1"], [0, 2, "2"], [0, 4, "3"], [2, 0, "2"], [4, 0, "3"]]
+        }
+      },
+      "entries": [
+        {
+          "id": "1A",
+          "direction": "across",
+          "row": 0,
+          "col": 0,
+          "answer": "DISCO",
+          "clue": {
+            "surface": "At first, did I seem cautious over a certain type of fever? (5)",
+            "segments": [
+              {
+                "type": "indicator",
+                "category": "acrostic",
+                "text": "At first",
+                "tooltip": "Wordplay: at first is an 'acrostic indicator' - take the first letters of the following words: \"Did I Seem Cautious Over ;)\""
+              },
+              {
+                "type": "fodder",
+                "text": "did I seem cautious over",
+                "tooltip": "Wordplay: These letters are what we call the \"fodder\"; these are the letters (or words) that you use to make up your answer."
+              },
+              {
+                "type": "definition",
+                "text": "a certain type of fever?",
+                "tooltip": "The Definition"
+              }
+            ]
+          }
+        },
+        {
+          "id": "2A",
+          "direction": "across",
+          "row": 2,
+          "col": 0,
+          "answer": "INANE",
+          "clue": {
+            "surface": "Win a necktie within (Boring!) (5)",
+            "segments": [
+              {
+                "type": "indicator",
+                "category": "hidden",
+                "text": "Within",
+                "tooltip": "Wordplay: Look WITHIN, 'win a neck…'"
+              },
+              {
+                "type": "fodder",
+                "text": "Win a necktie",
+                "tooltip": "Wordplay: These letters are what we call the \"fodder\"; these are the letters (or words) that you use to make up your answer."
+              },
+              {
+                "type": "definition",
+                "text": "(Boring!)",
+                "tooltip": "The Definition"
+              }
+            ]
+          }
+        },
+        {
+          "id": "3A",
+          "direction": "across",
+          "row": 4,
+          "col": 0,
+          "answer": "TAROT",
+          "clue": {
+            "surface": "Endlessly rotate and shuffle these cards (5)",
+            "segments": [
+              {
+                "type": "indicator",
+                "category": "deletion",
+                "text": "Endlessly",
+                "tooltip": "Wordplay: Endlessly often indicates deletion of the end of a word, in this case the next word with no end (ROTAT-e)"
+              },
+              {
+                "type": "fodder",
+                "text": "rotate and",
+                "tooltip": "Make it endless then follow the next instruction..."
+              },
+              {
+                "type": "indicator",
+                "category": "anagram",
+                "text": "shuffle",
+                "tooltip": "Wordplay: 'shuffle' is an anagram indicator (anagrind to experienced crossworders). This word tells you to mix up the letters in ROTAT to get a word that means 'cards'."
+              },
+              {
+                "type": "definition",
+                "text": "these cards",
+                "tooltip": "The Definition"
+              }
+            ]
+          }
+        },
+        {
+          "id": "1D",
+          "direction": "down",
+          "row": 0,
+          "col": 0,
+          "answer": "DRIFT",
+          "clue": {
+            "surface": "Five hundred fight and then go with the tide. (5)",
+            "segments": [
+              {
+                "type": "indicator",
+                "category": "charade",
+                "text": "Five hundred",
+                "tooltip": "Five Hundred Romans, Perhaps? (Just one letter)"
+              },
+              {
+                "type": "fodder",
+                "text": "fight and then",
+                "tooltip": "Another word for a fight? (rhymes with \"lift\")"
+              },
+              {
+                "type": "definition",
+                "text": "go with the tide",
+                "tooltip": "The Definition"
+              }
+            ]
+          }
+        },
+        {
+          "id": "2D",
+          "direction": "down",
+          "row": 0,
+          "col": 2,
+          "answer": "STAIR",
+          "clue": {
+            "surface": "A single step!, (&Lit) (5)",
+            "segments": [
+              {
+                "type": "indicator",
+                "category": "lit",
+                "text": "A single step!",
+                "tooltip": "...and literally so! aka &lit, a rare clue where what you see is what you get, sorry, not sorry, but that's all you get!"
+              }
+            ]
+          }
+        },
+        {
+          "id": "3D",
+          "direction": "down",
+          "row": 0,
+          "col": 4,
+          "answer": "OVERT",
+          "clue": {
+            "surface": "Over the top! (5) (&lit)",
+            "segments": [
+              {
+                "type": "indicator",
+                "category": "lit",
+                "text": "Over the top!",
+                "tooltip": "...and literally so! aka &lit, an.. oops, not so rare clue where - oh you get the picture, no? Over+the top of \"the\" being \"t\" Over+t = OVERT, which overtly, is over the top... and literally so."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  </script>
+
+  <!-- Bust browser cache by adding a version query string -->
+  <script src="script.js?v=4"></script>
+</body>
+</html>
