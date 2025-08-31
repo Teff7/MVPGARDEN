@@ -191,14 +191,18 @@ function onHintUsed(clueId, type){
     cell.isGrey = true;
     ent.iActive = idx;
     activeCellKey = key(cell.r, cell.c);
+    // Check both this entry and any crossing entry in case the revealed
+    // letter completes another clue.
+    cell.entries.forEach(checkIfSolved);
   } else {
     const candidates = ent.cells.filter(c => !c.isGrey);
     const cell = (candidates.length
       ? candidates[Math.floor(Math.random()*candidates.length)]
       : ent.cells[Math.floor(Math.random()*ent.cells.length)]);
     cell.isGrey = true;
+    // Greying doesn't change letters, but the clue might already be correct.
+    checkIfSolved(ent);
   }
-  checkIfSolved(ent);
   renderLetters();
 }
 
@@ -414,7 +418,9 @@ function typeChar(ch){
     if (!cell || cell.locked) return;
   }
   cell.letter = ch.toUpperCase();
-  checkIfSolved(currentEntry);
+  // Check every entry that uses this cell so crossing clues can
+  // auto-solve when their final letter is entered.
+  cell.entries.forEach(checkIfSolved);
   nextCell(+1);
   renderLetters();
 }
@@ -514,6 +520,8 @@ function setupHandlers(){
     currentEntry.cells.forEach((cell, idx) => {
       cell.letter = currentEntry.answer[idx];
     });
+    // After revealing, re-check all affected clues.
+    currentEntry.cells.forEach(cell => cell.entries.forEach(checkIfSolved));
     renderLetters();
     submitAnswer();
   });
