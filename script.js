@@ -1,4 +1,4 @@
-// Main game logic; starts directly in game view (menu/welcome/share stripped)
+// Main game logic; starts directly in game view
 const FILE = 'Clues.json';
 
 // Elements
