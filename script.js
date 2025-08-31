@@ -36,6 +36,13 @@ const btnBack = document.getElementById('btnBack');
 const btnGiveUp = document.getElementById('btnGiveUp');
 const btnShare = document.getElementById('btnShare'); // removed in HTML; will be null
 
+// Share modal elements
+const shareModal = document.getElementById('shareModal');
+const shareClose = document.getElementById('shareClose');
+const shareGrid = document.getElementById('shareGrid');
+const btnCopyResult = document.getElementById('copyResult');
+const copyToast = document.getElementById('copyToast');
+
 let puzzle = null;
 let grid = [];
 let cellMap = new Map();
@@ -44,6 +51,7 @@ let currentEntry = null;
 let activeCellKey = null;
 let lastClickedCellKey = null;
 const dirToggle = new Map();
+let puzzleFinished = false;
 
 const TIP = {
   acrostic: 'Take first letters.',
@@ -164,6 +172,7 @@ function onClueSolved(clueId){
     cell.locked = true;
   });
   renderLetters();
+  checkForCompletion();
 }
 
 // Called when a hint is used on a clue.  For non reveal-letter hints we simply
@@ -197,6 +206,98 @@ function onHintUsed(clueId, type){
 function checkIfSolved(ent){
   const guess = ent.cells.map(c => c.letter || '').join('').toUpperCase();
   if (guess === ent.answer.toUpperCase()) onClueSolved(ent.id);
+}
+
+// Check whether every cell matches its answer; if so, trigger completion.
+function checkForCompletion(){
+  if (puzzleFinished) return;
+  const done = entries.every(ent =>
+    ent.cells.every((cell, idx) => (cell.letter || '').toUpperCase() === ent.answer[idx])
+  );
+  if (done){
+    puzzleFinished = true;
+    onPuzzleComplete();
+  }
+}
+
+function onPuzzleComplete(){
+  renderSharePreview();
+  openShareModal();
+  finishGame();
+}
+
+// Build the share preview grid and emoji text
+function renderSharePreview(){
+  if (!shareGrid || !puzzle) return;
+  const { rows, cols } = puzzle.grid;
+  shareGrid.innerHTML = '';
+  shareGrid.style.gridTemplateColumns = `repeat(${cols},16px)`;
+  shareGrid.style.gridTemplateRows = `repeat(${rows},16px)`;
+  for (let r=0;r<rows;r++){
+    for (let c=0;c<cols;c++){
+      const cell = grid[r][c];
+      const d = document.createElement('div');
+      d.className = 'share-cell';
+      let bg = '#000';
+      if (!cell.block){
+        if (cell.isGrey) bg = GREY_VALUE;
+        else if (cell.baseColour !== 'none') bg = BASE_COLOUR_VALUES[cell.baseColour];
+        else bg = '#fff';
+      }
+      d.style.background = bg;
+      shareGrid.appendChild(d);
+    }
+  }
+}
+
+function buildShareText(){
+  const { rows, cols } = puzzle.grid;
+  const lines = [];
+  for (let r=0;r<rows;r++){
+    let line = '';
+    for (let c=0;c<cols;c++){
+      const cell = grid[r][c];
+      let emoji = '⬛';
+      if (!cell.block){
+        if (cell.isGrey) emoji = '⬜';
+        else if (cell.baseColour === 'green') emoji = '🟩';
+        else if (cell.baseColour === 'yellow') emoji = '🟨';
+        else if (cell.baseColour === 'purple') emoji = '🟪';
+        else emoji = '⬜';
+      }
+      line += emoji;
+    }
+    lines.push(line);
+  }
+  lines.push('I beat todays cryptic crossword!');
+  lines.push('https://mvpgarden.vercel.app/');
+  return lines.join('\n');
+}
+
+let lastFocused = null;
+function openShareModal(){
+  if (!shareModal) return;
+  lastFocused = document.activeElement;
+  shareModal.hidden = false;
+  const focusables = shareModal.querySelectorAll('button, [href]');
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const trap = (e) => {
+    if (e.key === 'Tab'){
+      if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    } else if (e.key === 'Escape'){ closeShareModal(); }
+  };
+  shareModal.addEventListener('keydown', trap);
+  shareModal._trap = trap;
+  (first || shareModal).focus();
+}
+
+function closeShareModal(){
+  if (!shareModal) return;
+  shareModal.hidden = true;
+  if (shareModal._trap) shareModal.removeEventListener('keydown', shareModal._trap);
+  if (lastFocused) lastFocused.focus();
 }
 
 function renderClue(ent){
@@ -338,16 +439,16 @@ function submitAnswer(){
   if (guess === target){
     onClueSolved(currentEntry.id);
     game.classList.add('flash-green');
-    setTimeout(() => {
-      game.classList.remove('flash-green');
-      const idx = entries.indexOf(currentEntry);
-      const next = entries[idx+1];
-      if (next) setCurrentEntry(next); else finishGame();
-    }, 650);
-  } else {
-    game.classList.add('flash-red');
-    setTimeout(() => game.classList.remove('flash-red'), 450);
-  }
+      setTimeout(() => {
+        game.classList.remove('flash-green');
+        const idx = entries.indexOf(currentEntry);
+        const next = entries[idx+1];
+        if (next) setCurrentEntry(next);
+      }, 650);
+    } else {
+      game.classList.add('flash-red');
+      setTimeout(() => game.classList.remove('flash-red'), 450);
+    }
 }
 
 function finishGame(){
@@ -418,8 +519,17 @@ function setupHandlers(){
     submitAnswer();
   });
 
-  // Share result — removed in HTML; keep guard (no-op if null)
-  if (btnShare) btnShare.addEventListener('click', () => {});
+  // Share modal handlers
+  if (shareClose) shareClose.addEventListener('click', closeShareModal);
+  if (btnCopyResult) btnCopyResult.addEventListener('click', () => {
+    const text = buildShareText();
+    navigator.clipboard.writeText(text).then(() => {
+      if (copyToast){
+        copyToast.hidden = false;
+        setTimeout(() => { copyToast.hidden = true; }, 1500);
+      }
+    });
+  });
 
   // Close dropdowns when clicking outside
   document.addEventListener('click', (e) => {
@@ -472,6 +582,11 @@ function restartGame(){
       c.locked = false;
     });
   });
+  puzzleFinished = false;
+  if (shareModal) shareModal.hidden = true;
+  if (copyToast) copyToast.hidden = true;
+  const fireworks = document.getElementById('fireworks');
+  if (fireworks) fireworks.classList.remove('on');
   setCurrentEntry(entries[0]);
   renderLetters();
 }

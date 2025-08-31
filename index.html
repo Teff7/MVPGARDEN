@@ -65,6 +65,20 @@
     </div>
   </div>
 
+  <!-- Completion/share modal -->
+  <div id="shareModal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="shareHeading">
+      <button class="modal-close" id="shareClose" aria-label="Close">×</button>
+      <h2 id="shareHeading">Kia ora — you finished!</h2>
+      <p>I beat todays cryptic crossword!</p>
+      <div id="shareGrid" class="share-grid" aria-label="Result grid"></div>
+      <button class="help-button small" id="copyResult">Copy result</button>
+      <a class="help-button small" href="https://mvpgarden.vercel.app/" target="_blank" rel="noopener">mvpgarden.vercel.app</a>
+    </div>
+  </div>
+
+  <div id="copyToast" class="toast" hidden>Copied</div>
+
   <div id="fireworks" class="fireworks" aria-hidden="true"></div>
 
   <!-- Inline puzzle data & tooltips embedded -->

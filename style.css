@@ -132,3 +132,28 @@ body{margin:0; background:var(--bg); color:var(--fg);
 .modal-close{ position:sticky; top:0; float:right; margin-left:auto; border:0; background:transparent; color:#fff; font-size:2rem; cursor:pointer }
 .fireworks{ position:fixed; inset:0; pointer-events:none }
 .pixel{ position:absolute; width:2px; height:2px; background:#fff }
+
+/* Share modal preview grid */
+.share-grid{
+  display:grid;
+  grid-template-columns:repeat(5,16px);
+  grid-template-rows:repeat(5,16px);
+  gap:2px;
+  margin:1rem auto;
+}
+.share-cell{
+  width:16px; height:16px; border:1px solid #444;
+}
+
+/* Copy toast */
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:1rem;
+  transform:translateX(-50%);
+  background:#333;
+  color:#fff;
+  padding:.4rem .8rem;
+  border-radius:8px;
+  font-size:.9rem;
+}
