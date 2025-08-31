@@ -1,4 +1,4 @@
-// script.js — loads straight to game, menu/welcome/share removed
+// Main game logic; starts directly in game view (menu/welcome/share stripped)
 const FILE = 'Clues.json';
 
 // Elements
