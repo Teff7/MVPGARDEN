@@ -54,6 +54,19 @@ const TIP = {
   lit: 'Whole clue is both definition and wordplay.'
 };
 
+// Mapping from clue numbers to their highlight colours. Both the across and
+// down clues with the same number share a colour.
+const NUMBER_COLOURS = { '1': 'green', '2': 'yellow', '3': 'purple' };
+
+// Actual colour values used when rendering the grid.  These are fairly light so
+// that the black text remains legible over them.
+const BASE_COLOUR_VALUES = {
+  green: '#a8e6a8',
+  yellow: '#fff59d',
+  purple: '#d8b4fe'
+};
+const GREY_VALUE = '#bbb';
+
 function key(r,c){ return `${r},${c}`; }
 
 // ----- Grid build -----
@@ -68,7 +81,18 @@ function buildGrid(){
     const rowArr = [];
     for (let c=0;c<cols;c++){
       const k = key(r,c);
-      const cell = { r,c, block:blockSet.has(k), letter:'', entries:[], el:document.createElement('div'), nums:[] };
+      const cell = {
+        r,c,
+        block:blockSet.has(k),
+        letter:'',
+        // baseColour: "none" until a clue covering this cell is solved.
+        baseColour: 'none',
+        // isGrey marks whether a hint has touched this cell.
+        isGrey: false,
+        entries:[],
+        el:document.createElement('div'),
+        nums:[]
+      };
       cell.el.className = 'cell' + (cell.block ? ' block' : '');
       cell.el.setAttribute('role','gridcell');
       if (!cell.block) cell.el.addEventListener('click', () => handleCellClick(k));
@@ -101,7 +125,9 @@ function placeEntries(){
     answer: e.answer.toUpperCase(),
     clue: e.clue,
     cells: [],
-    iActive: 0
+    iActive: 0,
+    // Track whether the clue has been solved.
+    status: 'unsolved'
   }));
 
   entries.forEach(ent => {
@@ -114,6 +140,56 @@ function placeEntries(){
       cell.entries.push(ent);
     }
   });
+}
+
+// ----- Events -----
+// Return the highlight colour for a given clue id.
+function colourForClue(id){
+  const num = (id.match(/^\d+/) || [])[0];
+  return NUMBER_COLOURS[num] || null;
+}
+
+// Called when a clue is solved.  Colours the cells of the clue according to the
+// mapping above but never overwrites an existing baseColour.
+function onClueSolved(clueId){
+  const ent = entries.find(e => e.id === clueId);
+  if (!ent || ent.status === 'solved') return;
+  ent.status = 'solved';
+  const colour = colourForClue(clueId);
+  if (colour){
+    ent.cells.forEach(cell => {
+      if (cell.baseColour === 'none') cell.baseColour = colour;
+    });
+  }
+  renderLetters();
+}
+
+// Called when a hint is used on a clue.  For non reveal-letter hints we simply
+// grey out a random cell.  For reveal-letter hints we also fill in the correct
+// letter for one not-yet-correct cell.
+function onHintUsed(clueId, type){
+  const ent = entries.find(e => e.id === clueId);
+  if (!ent) return;
+
+  if (type === 'reveal-letter'){
+    const candidates = ent.cells
+      .map((c,i) => ({ cell:c, idx:i }))
+      .filter(({cell, idx}) => (cell.letter || '').toUpperCase() !== ent.answer[idx]);
+    if (!candidates.length) return;
+    const { cell, idx } = candidates[Math.floor(Math.random()*candidates.length)];
+    cell.letter = ent.answer[idx];
+    cell.isGrey = true;
+    ent.iActive = idx;
+    activeCellKey = key(cell.r, cell.c);
+  } else {
+    const candidates = ent.cells.filter(c => !c.isGrey);
+    const cell = (candidates.length
+      ? candidates[Math.floor(Math.random()*candidates.length)]
+      : ent.cells[Math.floor(Math.random()*ent.cells.length)]);
+    cell.isGrey = true;
+  }
+
+  renderLetters();
 }
 
 function renderClue(ent){
@@ -145,7 +221,16 @@ function renderLetters(){
       cell.el.removeChild(n);
     });
     cell.el.classList.remove('active');
+    if (cell.block) return;
+
+    // Apply colouring rules.  Grey overlay takes precedence over baseColour.
+    let bg = '#fff';
+    if (cell.isGrey) bg = GREY_VALUE;
+    else if (cell.baseColour !== 'none') bg = BASE_COLOUR_VALUES[cell.baseColour];
+    cell.el.style.background = bg;
+    cell.el.style.color = '#000'; // keep text legible over grey
   });
+
   grid.flat().forEach(cell => {
     if (cell.letter) {
       const d = document.createElement('div');
@@ -229,6 +314,7 @@ function submitAnswer(){
   const guess = currentEntry.cells.map(c => c.letter||' ').join('').toUpperCase();
   const target = currentEntry.answer.toUpperCase();
   if (guess === target){
+    onClueSolved(currentEntry.id);
     game.classList.add('flash-green');
     setTimeout(() => {
       game.classList.remove('flash-green');
@@ -267,20 +353,18 @@ function setupHandlers(){
     }
   });
   if (btnHintDef) btnHintDef.addEventListener('click', () => {
-    clueTextEl.classList.toggle('help-on');
+    if (!currentEntry) return;
+    const shown = clueTextEl.classList.toggle('help-on');
+    if (shown) onHintUsed(currentEntry.id, 'definition');
   });
   if (btnHintLetter) btnHintLetter.addEventListener('click', () => {
     if (!currentEntry) return;
-    const empties = currentEntry.cells.map((c,i)=>c.letter?null:i).filter(i=>i!==null);
-    if (!empties.length) return;
-    const idx = empties[Math.floor(Math.random()*empties.length)];
-    currentEntry.cells[idx].letter = currentEntry.answer[idx];
-    currentEntry.iActive = idx;
-    activeCellKey = key(currentEntry.cells[idx].r, currentEntry.cells[idx].c);
-    renderLetters();
+    onHintUsed(currentEntry.id, 'reveal-letter');
   });
   if (btnHintAnalyse) btnHintAnalyse.addEventListener('click', () => {
-    clueTextEl.classList.toggle('annot-on');
+    if (!currentEntry) return;
+    const shown = clueTextEl.classList.toggle('annot-on');
+    if (shown) onHintUsed(currentEntry.id, 'analyse');
   });
 
   // Top Menu dropdown — removed; guards keep this safe if elements don't exist
@@ -357,7 +441,14 @@ function setupHandlers(){
   });
 }
 function restartGame(){
-  entries.forEach(ent => ent.cells.forEach(c => { c.letter = ''; }));
+  entries.forEach(ent => {
+    ent.status = 'unsolved';
+    ent.cells.forEach(c => {
+      c.letter = '';
+      c.baseColour = 'none';
+      c.isGrey = false;
+    });
+  });
   setCurrentEntry(entries[0]);
   renderLetters();
 }
