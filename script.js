@@ -34,7 +34,6 @@ const btnBack = document.getElementById('btnBack');
 
 // Additional controls
 const btnGiveUp = document.getElementById('btnGiveUp');
-const btnShare = document.getElementById('btnShare'); // removed in HTML; will be null
 
 // Share modal elements
 const shareModal = document.getElementById('shareModal');
