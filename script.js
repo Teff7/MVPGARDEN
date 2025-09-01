@@ -320,10 +320,7 @@ function closeShareModal(){
   if (shareModal._trap) shareModal.removeEventListener('keydown', shareModal._trap);
   if (lastFocused) lastFocused.focus();
 
-  }
-
   renderLetters();
-
 }
 
 function renderClue(ent){
@@ -618,9 +615,6 @@ function restartGame(){
   if (copyToast) copyToast.hidden = true;
   const fireworks = document.getElementById('fireworks');
   if (fireworks) fireworks.classList.remove('on');
-
-    });
-  });
 
   setCurrentEntry(entries[0]);
   renderLetters();
