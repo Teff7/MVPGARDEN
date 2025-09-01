@@ -96,6 +96,7 @@ function buildGrid(){
         baseColour: 'none',
         // isGrey marks whether a hint has touched this cell.
         isGrey: false,
+
         // locked letters cannot be overwritten once the clue is solved.
         locked: false,
         entries:[],
@@ -165,6 +166,7 @@ function onClueSolved(clueId){
   if (!ent || ent.status === 'solved') return;
   ent.status = 'solved';
   const colour = colourForClue(clueId);
+
   ent.cells.forEach(cell => {
     if (colour && cell.baseColour === 'none') cell.baseColour = colour;
     // lock the cell so its letter cannot be changed
@@ -172,6 +174,14 @@ function onClueSolved(clueId){
   });
   renderLetters();
   checkForCompletion();
+
+  if (colour){
+    ent.cells.forEach(cell => {
+      if (cell.baseColour === 'none') cell.baseColour = colour;
+    });
+  }
+  renderLetters();
+
 }
 
 // Called when a hint is used on a clue.  For non reveal-letter hints we simply
@@ -179,7 +189,11 @@ function onClueSolved(clueId){
 // letter for one not-yet-correct cell.
 function onHintUsed(clueId, type){
   const ent = entries.find(e => e.id === clueId);
+
   if (!ent || ent.status === 'solved') return;
+
+  if (!ent) return;
+
 
   if (type === 'reveal-letter'){
     const candidates = ent.cells
@@ -191,15 +205,18 @@ function onHintUsed(clueId, type){
     cell.isGrey = true;
     ent.iActive = idx;
     activeCellKey = key(cell.r, cell.c);
+
     // Check both this entry and any crossing entry in case the revealed
     // letter completes another clue.
     cell.entries.forEach(checkIfSolved);
+
   } else {
     const candidates = ent.cells.filter(c => !c.isGrey);
     const cell = (candidates.length
       ? candidates[Math.floor(Math.random()*candidates.length)]
       : ent.cells[Math.floor(Math.random()*ent.cells.length)]);
     cell.isGrey = true;
+
     // Greying doesn't change letters, but the clue might already be correct.
     checkIfSolved(ent);
   }
@@ -302,6 +319,11 @@ function closeShareModal(){
   shareModal.hidden = true;
   if (shareModal._trap) shareModal.removeEventListener('keydown', shareModal._trap);
   if (lastFocused) lastFocused.focus();
+
+  }
+
+  renderLetters();
+
 }
 
 function renderClue(ent){
@@ -587,6 +609,7 @@ function restartGame(){
       c.letter = '';
       c.baseColour = 'none';
       c.isGrey = false;
+
       c.locked = false;
     });
   });
@@ -595,6 +618,10 @@ function restartGame(){
   if (copyToast) copyToast.hidden = true;
   const fireworks = document.getElementById('fireworks');
   if (fireworks) fireworks.classList.remove('on');
+
+    });
+  });
+
   setCurrentEntry(entries[0]);
   renderLetters();
 }
