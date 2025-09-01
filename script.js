@@ -1,4 +1,4 @@
-// script.js — loads straight to game, menu/welcome/share removed
+// Main game logic; starts directly in game view
 const FILE = 'Clues.json';
 
 // Elements
@@ -34,7 +34,13 @@ const btnBack = document.getElementById('btnBack');
 
 // Additional controls
 const btnGiveUp = document.getElementById('btnGiveUp');
-const btnShare = document.getElementById('btnShare'); // removed in HTML; will be null
+
+// Share modal elements
+const shareModal = document.getElementById('shareModal');
+const shareClose = document.getElementById('shareClose');
+const shareGrid = document.getElementById('shareGrid');
+const btnCopyResult = document.getElementById('copyResult');
+const copyToast = document.getElementById('copyToast');
 
 let puzzle = null;
 let grid = [];
@@ -44,6 +50,7 @@ let currentEntry = null;
 let activeCellKey = null;
 let lastClickedCellKey = null;
 const dirToggle = new Map();
+let puzzleFinished = false;
 
 const TIP = {
   acrostic: 'Take first letters.',
@@ -89,6 +96,9 @@ function buildGrid(){
         baseColour: 'none',
         // isGrey marks whether a hint has touched this cell.
         isGrey: false,
+
+        // locked letters cannot be overwritten once the clue is solved.
+        locked: false,
         entries:[],
         el:document.createElement('div'),
         nums:[]
@@ -156,12 +166,22 @@ function onClueSolved(clueId){
   if (!ent || ent.status === 'solved') return;
   ent.status = 'solved';
   const colour = colourForClue(clueId);
+
+  ent.cells.forEach(cell => {
+    if (colour && cell.baseColour === 'none') cell.baseColour = colour;
+    // lock the cell so its letter cannot be changed
+    cell.locked = true;
+  });
+  renderLetters();
+  checkForCompletion();
+
   if (colour){
     ent.cells.forEach(cell => {
       if (cell.baseColour === 'none') cell.baseColour = colour;
     });
   }
   renderLetters();
+
 }
 
 // Called when a hint is used on a clue.  For non reveal-letter hints we simply
@@ -169,7 +189,11 @@ function onClueSolved(clueId){
 // letter for one not-yet-correct cell.
 function onHintUsed(clueId, type){
   const ent = entries.find(e => e.id === clueId);
+
+  if (!ent || ent.status === 'solved') return;
+
   if (!ent) return;
+
 
   if (type === 'reveal-letter'){
     const candidates = ent.cells
@@ -181,15 +205,125 @@ function onHintUsed(clueId, type){
     cell.isGrey = true;
     ent.iActive = idx;
     activeCellKey = key(cell.r, cell.c);
+
+    // Check both this entry and any crossing entry in case the revealed
+    // letter completes another clue.
+    cell.entries.forEach(checkIfSolved);
+
   } else {
     const candidates = ent.cells.filter(c => !c.isGrey);
     const cell = (candidates.length
       ? candidates[Math.floor(Math.random()*candidates.length)]
       : ent.cells[Math.floor(Math.random()*ent.cells.length)]);
     cell.isGrey = true;
+
+    // Greying doesn't change letters, but the clue might already be correct.
+    checkIfSolved(ent);
+  }
+  renderLetters();
+}
+
+function checkIfSolved(ent){
+  const guess = ent.cells.map(c => c.letter || '').join('').toUpperCase();
+  if (guess === ent.answer.toUpperCase()) onClueSolved(ent.id);
+}
+
+// Check whether every cell matches its answer; if so, trigger completion.
+function checkForCompletion(){
+  if (puzzleFinished) return;
+  const done = entries.every(ent =>
+    ent.cells.every((cell, idx) => (cell.letter || '').toUpperCase() === ent.answer[idx])
+  );
+  if (done){
+    puzzleFinished = true;
+    onPuzzleComplete();
+  }
+}
+
+function onPuzzleComplete(){
+  renderSharePreview();
+  openShareModal();
+  finishGame();
+}
+
+// Build the share preview grid shown in the modal
+function renderSharePreview(){
+  if (!shareGrid || !puzzle) return;
+  const { rows, cols } = puzzle.grid;
+  shareGrid.innerHTML = '';
+  shareGrid.style.gridTemplateColumns = `repeat(${cols},16px)`;
+  shareGrid.style.gridTemplateRows = `repeat(${rows},16px)`;
+  for (let r=0;r<rows;r++){
+    for (let c=0;c<cols;c++){
+      const cell = grid[r][c];
+      const d = document.createElement('div');
+      d.className = 'share-cell';
+      let bg = '#000';
+      if (!cell.block){
+        if (cell.isGrey) bg = GREY_VALUE;
+        else if (cell.baseColour !== 'none') bg = BASE_COLOUR_VALUES[cell.baseColour];
+        else bg = '#fff';
+      }
+      d.style.background = bg;
+      shareGrid.appendChild(d);
+    }
+  }
+}
+
+// Assemble plain-text emoji grid for clipboard sharing
+function buildShareText(){
+  const { rows, cols } = puzzle.grid;
+  const lines = [];
+  for (let r=0;r<rows;r++){
+    let line = '';
+    for (let c=0;c<cols;c++){
+      const cell = grid[r][c];
+      let emoji = '⬛';
+      if (!cell.block){
+        if (cell.isGrey) emoji = '⬜';
+        else if (cell.baseColour === 'green') emoji = '🟩';
+        else if (cell.baseColour === 'yellow') emoji = '🟨';
+        else if (cell.baseColour === 'purple') emoji = '🟪';
+        else emoji = '⬜';
+      }
+      line += emoji;
+    }
+    lines.push(line);
+  }
+  lines.push('I beat todays cryptic crossword!');
+  lines.push('https://mvpgarden.vercel.app/');
+  return lines.join('\n');
+}
+
+let lastFocused = null;
+function openShareModal(){
+  if (!shareModal) return;
+  lastFocused = document.activeElement;
+  shareModal.hidden = false;
+  const focusables = shareModal.querySelectorAll('button, [href]');
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const trap = (e) => {
+    if (e.key === 'Tab'){
+      if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    } else if (e.key === 'Escape'){ closeShareModal(); }
+  };
+  shareModal.addEventListener('keydown', trap);
+  shareModal._trap = trap;
+  (first || shareModal).focus();
+}
+
+function closeShareModal(){
+  if (!shareModal) return;
+  shareModal.hidden = true;
+  if (shareModal._trap) shareModal.removeEventListener('keydown', shareModal._trap);
+  if (lastFocused) lastFocused.focus();
+
   }
 
   renderLetters();
+
 }
 
 function renderClue(ent){
@@ -257,6 +391,9 @@ function setCurrentEntry(ent, fromCellKey=null){
   } else if (ent.iActive==null){
     ent.iActive = 0;
   }
+  if (ent.cells[ent.iActive].locked) {
+    nextCell(+1) || nextCell(-1);
+  }
   const cell = ent.cells[ent.iActive];
   activeCellKey = key(cell.r,cell.c);
   renderLetters();
@@ -285,8 +422,11 @@ function handleCellClick(k){
 
 function nextCell(inc){
   if (!currentEntry) return null;
-  let i = currentEntry.iActive + inc;
-  i = Math.max(0, Math.min(i, currentEntry.cells.length-1));
+  let i = currentEntry.iActive;
+  do {
+    i += inc;
+  } while (i >= 0 && i < currentEntry.cells.length && currentEntry.cells[i].locked);
+  if (i < 0 || i >= currentEntry.cells.length) return null;
   currentEntry.iActive = i;
   const cell = currentEntry.cells[i];
   activeCellKey = key(cell.r,cell.c);
@@ -295,15 +435,26 @@ function nextCell(inc){
 
 function typeChar(ch){
   if (!currentEntry) return;
-  const cell = currentEntry.cells[currentEntry.iActive];
+  let cell = currentEntry.cells[currentEntry.iActive];
+  if (cell.locked){
+    cell = nextCell(+1);
+    if (!cell || cell.locked) return;
+  }
   cell.letter = ch.toUpperCase();
+  // Check every entry that uses this cell so crossing clues can
+  // auto-solve when their final letter is entered.
+  cell.entries.forEach(checkIfSolved);
   nextCell(+1);
   renderLetters();
 }
 
 function backspace(){
   if (!currentEntry) return;
-  const cell = currentEntry.cells[currentEntry.iActive];
+  let cell = currentEntry.cells[currentEntry.iActive];
+  if (cell.locked){
+    cell = nextCell(-1);
+    if (!cell || cell.locked) return;
+  }
   cell.letter = '';
   nextCell(-1);
   renderLetters();
@@ -316,16 +467,16 @@ function submitAnswer(){
   if (guess === target){
     onClueSolved(currentEntry.id);
     game.classList.add('flash-green');
-    setTimeout(() => {
-      game.classList.remove('flash-green');
-      const idx = entries.indexOf(currentEntry);
-      const next = entries[idx+1];
-      if (next) setCurrentEntry(next); else finishGame();
-    }, 650);
-  } else {
-    game.classList.add('flash-red');
-    setTimeout(() => game.classList.remove('flash-red'), 450);
-  }
+      setTimeout(() => {
+        game.classList.remove('flash-green');
+        const idx = entries.indexOf(currentEntry);
+        const next = entries[idx+1];
+        if (next) setCurrentEntry(next);
+      }, 650);
+    } else {
+      game.classList.add('flash-red');
+      setTimeout(() => game.classList.remove('flash-red'), 450);
+    }
 }
 
 function finishGame(){
@@ -392,12 +543,23 @@ function setupHandlers(){
     currentEntry.cells.forEach((cell, idx) => {
       cell.letter = currentEntry.answer[idx];
     });
+    // After revealing, re-check all affected clues.
+    currentEntry.cells.forEach(cell => cell.entries.forEach(checkIfSolved));
     renderLetters();
     submitAnswer();
   });
 
-  // Share result — removed in HTML; keep guard (no-op if null)
-  if (btnShare) btnShare.addEventListener('click', () => {});
+  // Share modal handlers
+  if (shareClose) shareClose.addEventListener('click', closeShareModal);
+  if (btnCopyResult) btnCopyResult.addEventListener('click', () => {
+    const text = buildShareText();
+    navigator.clipboard.writeText(text).then(() => {
+      if (copyToast){
+        copyToast.hidden = false;
+        setTimeout(() => { copyToast.hidden = true; }, 1500);
+      }
+    });
+  });
 
   // Close dropdowns when clicking outside
   document.addEventListener('click', (e) => {
@@ -447,8 +609,19 @@ function restartGame(){
       c.letter = '';
       c.baseColour = 'none';
       c.isGrey = false;
+
+      c.locked = false;
     });
   });
+  puzzleFinished = false;
+  if (shareModal) shareModal.hidden = true;
+  if (copyToast) copyToast.hidden = true;
+  const fireworks = document.getElementById('fireworks');
+  if (fireworks) fireworks.classList.remove('on');
+
+    });
+  });
+
   setCurrentEntry(entries[0]);
   renderLetters();
 }
